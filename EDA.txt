@@ -3,15 +3,25 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+# loading the data
 df_1990s = pd.read_csv("foia-7afy1991-fy1999-asof-221231.csv", encoding='latin1', low_memory = False)
 df_2000s = pd.read_csv("2000-2009.csv", encoding='latin1', low_memory = False)
 df_2010s = pd.read_csv("2010-2019.csv", encoding='latin1', low_memory = False)
+
+# Joining the 2000s and 2010s data sets
 df = pd.concat([df_2000s, df_2010s], ignore_index=True)
+
+# Check that its loaded
 df.head()
 
+# Checking the data's types and null counts
 df_1990s.info()
 
-# break
+# shape of main dataframe right after creation
+print(f"The set has {df.shape[0]} lines")
+
+# break suggestion for jupyter
+
 print("This is the first set- 1990s")
 print(df_1990s.shape)
 
@@ -31,7 +41,19 @@ print("Min Guaranteed Approval by the SBA for the 1990s")
 Min90 = df_1990s["SBAGuaranteedApproval"].min()
 print(Min90)
 
-# break
+CO1990 = df_1990s['LoanStatus'].value_counts(normalize=False)["CHGOFF"]
+
+PIF1990 = df_1990s['LoanStatus'].value_counts(normalize=False)["PIF"]
+
+ratio1990s = CO1990/PIF1990
+print("Ratio of Charged Off to Paid in Full for the 1990s:", ratio1990s)
+print(f"There are {CO1990} chargeoff loans to {PIF1990} paid in full loans")
+
+# Check if previous commands changed anything on the main data frame
+#print(f"Main data frame shape revision: {df.shape}")
+
+# break suggestion 
+
 print("This is the second set- 2000s")
 print(df_2000s.shape)
 
@@ -52,6 +74,13 @@ print("Min Guaranteed Approval by the SBA for the 2000s")
 Min00 = df_2000s["SBAGuaranteedApproval"].min()
 print(Min00)
 
+CO2000 = df_2000s['LoanStatus'].value_counts(normalize=False)["CHGOFF"]
+
+PIF2000 = df_2000s['LoanStatus'].value_counts(normalize=False)["PIF"]
+
+ratio2000s = CO2000/PIF2000
+print("Ratio of Charged Off to Paid in Full for the 1990s:", ratio2000s)
+print(f"There are {CO2000} chargeoff loans to {PIF2000} paid in full loans")
 
 print("This is the third set- 2010s")
 print(df_2010s.shape)
@@ -72,49 +101,208 @@ print("Min Guaranteed approval by the SBA for 2010s" )
 Min10 = df_2010s["SBAGuaranteedApproval"].min()
 print(Min10)
 
+CO2010 = df_2010s['LoanStatus'].value_counts(normalize=False)["CHGOFF"]
+
+PIF2010 = df_2010s['LoanStatus'].value_counts(normalize=False)["PIF"]
+
+ratio2010s = CO2010/PIF2010
+print("Ratio of Charged Off to Paid in Full for the 1990s:", ratio2010s)
+
+print(f"There are {CO2010} chargeoff loans to {PIF2010} paid in full loans")
+
+# Check if previous commands changed anything on the main data frame
+#print(f"Main data frame shape revision: {df.shape}")
+
+# loop for checking every data frames missing values
+
+for i, dft in enumerate([df_1990s,df_2000s,df_2010s],start = 1):
+    print(f"\n Missing values in dataset {i}")
+    print(dft.isnull().sum())
+    
+    
+    print(f"Total rows with missing data: {dft.isnull().any(axis=1).sum()}")
+
+    print(f"\nDuplicates: {dft.duplicated().sum()}")
+
+# check how many values before we do anything to data set 
+print (f" Making sure the previous code didn't change the main dataframe {df.shape}")
+
+
+# Duplicates should be 112 289 1149 if data loaded right 
+
 
 # DataFrame Info
 print("Main Data Frame Info")
 df.info()
 
+# Checking/ revising the dataset
 print("Data Frame Description")
 print(df.describe(include='all'))
-print(" Full Data frame size")
+
+## dealing with duplicates, figure out how many there are in total in the main data set we will use 
+
+# Checking the ratio of defaults to paid off before deleting duplicates.
+
+# Number of default loans
+COdf = df['LoanStatus'].value_counts(normalize=False)["CHGOFF"]
+
+# Number of paid off loans in the main dataframe 
+PIFdf = df['LoanStatus'].value_counts(normalize=False)["PIF"]
+
+# getting ratio and displaying values
+ratiodf = COdf/PIFdf
+
+print("Ratio of Charged Off to Paid in Full for the df before duplicate deletion:", ratiodf)
+
+print(f"There are {COdf} chargeoff loans to {PIFdf} paid in full loans before duplicate deletion")
+
+#duplicate deletion
+A = df.shape[0]
+
+# number of rows before deletion
+print(f"Rows before duplicate deletion: {A}")
+
+df = df.drop_duplicates()
+
+#number of rows after deletion
+B = df.shape[0]
+print(f"Rows after duplicates deletion {B}")
+
+print(f"Their difference is {A-B} Rows deleted")
+
+# checking ratio after deletion
+
+COdf = df['LoanStatus'].value_counts(normalize=False)["CHGOFF"]
+
+PIFdf = df['LoanStatus'].value_counts(normalize=False)["PIF"]
+
+ratiodf = COdf/PIFdf
+print("Ratio of Charged Off to Paid in Full for the df after duplicate deletion:", ratiodf)
+
+print(f"There are {COdf} chargeoff loans to {PIFdf} paid in full loans after duplicate deletion")
+
+
+
+# sanity check
 print(df.shape)
 
 print("Data Frame's null values")
 df.isnull().sum()
 
+# Deleting the columns we won't use 
+
+# Creating the list of columns we will delete
+
 useless_cols=['AsOfDate','Program','BankNCUANumber','FranchiseCode',
              'FranchiseName', 'BusinessAge', 'InitialInterestRate', 'ChargeOffDate']
+
+# Actually dropping the columns
 df.drop(columns=[col for col in useless_cols if col in df.columns], inplace=True) #I added this so we can keep rerunning this cell without errors
 
 df = df.copy() # i Added this as a checkpoint 
+
+# Changing the missing values to ones we can use 
 df['NaicsDescription']   = df['NaicsDescription'].fillna('Unknown')
 df['BankFDICNumber']     = df['BankFDICNumber'].fillna(0)
 df['FirstDisbursementDate'] = df['FirstDisbursementDate'].fillna('Unknown')
 df['BusinessType']       = df['BusinessType'].fillna(df['BusinessType'].mode()[0])
 
-# see which we need to look over
+# sanity check
+print(" Full Data frame size")
+print(df.shape)
+print(df.info())
+
+# See what categories are present in the loan status column
 print(df["LoanStatus"].unique())
 #removed the loans that were either, canceled, exempt or Commit, they dont fit our criteria leaving us iwth 947,339 lines of code
 df = df[df["LoanStatus"].isin(["PIF", "CHGOFF"])]
 #checks how many lines are left
 print(df.shape)
-#checks that the non-null values stays at 947,339
+#checks that the non-null values stays at the same amount as the number of lines
+df.info()
+
+status_map = {'PIF': 1, 'CHGOFF': 0}
+df['LoanStatus'] = df['LoanStatus'].map(status_map)
+
+# check to make sure the non- null values are the same and dont get messed up into all null 
 df.info()
 
 #checking how many have null values 
 df.isnull().sum()
 
+## add a check to see how many lines before the na drop
+
+# Getting values of default vs paid off for the clean data set 
+COdf = df['LoanStatus'].value_counts(normalize=False)[0]
+
+PIFdf = df['LoanStatus'].value_counts(normalize=False)[1]
+
+# Ratio the counts to see the ratio of the full data frame then print 
+ratiodf = COdf/PIFdf
+print("Ratio of Charged Off to Paid in Full for the df before NaN deletion:", ratiodf)
+
+print(f"There are {COdf} chargeoff loans to {PIFdf} paid in full loans before NaN deletion")
+
+#Checking the rows before we do the null deletion
+germ = df.shape[0]
+print(f"Rows before NaN deletion: {germ}")
+
+#Dropping the null values 
 df = df.dropna()
 
+# Checking the amount of lines we have after null deletion 
+worm = df.shape[0]
+print(f"Rows after NaN deletion {worm}")
+
+# Difference in instances before and after null deletion
+print(f"Their difference is {germ-worm} Rows deleted")
+
+# Can do sanity check here 
+#df.info()
+
+# Ratio of paid off to defaults after null deletion
+COdf = df['LoanStatus'].value_counts(normalize=False)[0]
+
+PIFdf = df['LoanStatus'].value_counts(normalize=False)[1]
+
+# Ratio creation and display
+ratiodf = COdf/PIFdf
+print("Ratio of Charged Off to Paid in Full for the df after NaN deletion:", ratiodf)
+
+print(f"There are {COdf} chargeoff loans to {PIFdf} paid in full loans after NaN deletion")
+
+# Simple check
 df.info()
 
+# Making sure we have no null values left 
 df.isnull().sum()
 
-status_map = {'PIF': 1, 'CHGOFF': 0}
-df['LoanStatus'] = df['LoanStatus'].map(status_map)
+# Describe the cleaner data set 
+df.describe()
+
+print(" Data frame shape: ", df.shape)
+
+
+# Max Gross Approval and SBA Guranteed approval for the main cleaner data set 
+GAdf = df["GrossApproval"].max()
+
+print(GAdf)
+
+SBAGAdf = df["SBAGuaranteedApproval"].max()
+
+print(SBAGAdf)
+
+top_n = 5  # how many most frequent categories we want to show
+
+for col in df.columns:
+    print(f"\nColumn: {col}")
+    if df[col].dtype == 'object' or df[col].dtype.name == 'category':
+        print(df[col].value_counts().head(top_n)) # shows n top categories with the most values
+        print(df[col].nunique()) # gives us number of unique values 
+        print(df[col].unique()) # Shows what the values in the column look like 
+    else:
+        print("Numeric column — skipped") # skip the numeric, there can be infinite categories 
+
 
 matrix = np.array([[GA90,GA00,GA10],
                    [MINGA90,MINGA00,MINGA10],
