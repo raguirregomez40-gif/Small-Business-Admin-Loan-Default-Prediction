@@ -360,9 +360,6 @@ fig, ax1 = plt.subplots(figsize=(11, 11))
 sns.heatmap(numeric_df.corr(), annot=True, ax=ax1)
 
 
-
-
-
 #Univrate graphs 
 numeric_cols = ['GrossApproval', 'SBAGuaranteedApproval', 'TermInMonths', 'JobsSupported']
 
@@ -377,3 +374,62 @@ for i, col in enumerate(numeric_cols, 1):
 plt.tight_layout()
 plt.savefig("univariate_distributions.png", dpi=300, bbox_inches='tight')
 plt.show()
+
+
+import catboost
+from catboost import CatBoostClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report
+
+X = df.drop(columns = ["LoanStatus"])
+y = df["LoanStatus"]
+
+cat_features = X.select_dtypes( include = ["object", "category"]).columns.tolist()
+
+text_features = ['NaicsDescription'] if 'NaicsDescription' in cat_features else []
+
+print(cat_features)
+print(text_features)
+
+cat_features = [c for c in cat_features if c not in text_features]
+
+print(cat_features)
+
+X_train, X_test, y_train, y_test = train_test_split(X,y, test_size = .20 , random_state = 8, stratify = y)
+
+model = CatBoostClassifier(cat_features = cat_features,
+                           text_features = text_features,
+                           iterations = 20,
+                           learning_rate = .05,
+                           depth = 8,
+                           loss_function = "Logloss",
+                           eval_metric = 'Accuracy',
+                           verbose = 100)
+model.fit(X_train, y_train,
+          eval_set = (X_test, y_test),
+          use_best_model = True)
+
+y_pred = model.predict(X_test)
+
+print("Accuracy: ", accuracy_score(y_test,y_pred))
+
+print(classification_report(y_test,y_pred))
+
+feat_imp = pd.DataFrame(model.get_feature_importance(prettified = True),columns = ['Feature Id','Importances'])
+
+top10 = feat_imp.sort_values(by = 'Importances',ascending = False).head(10)
+
+plt.figure(figsize = (8,5))
+plt.barh(top10['Feature Id'],top10['Importances'],color = 'steelblue')
+
+plt.gca().invert_yaxis()
+
+plt.title('Top 10 most important features')
+plt.ylabel("Importance Score")
+plt.xlabel("Importance Feature")
+plt.tight_layout()
+plt.show()
+
+print(feat_imp.columns)
+
+model.get_feature_importance(prettified = True).head(10)
