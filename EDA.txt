@@ -433,3 +433,65 @@ plt.show()
 print(feat_imp.columns)
 
 model.get_feature_importance(prettified = True).head(10)
+
+
+
+
+# Random Forest
+
+
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, roc_auc_score, classification_report
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
+X = df[['GrossApproval', 'SBAGuaranteedApproval', 'TermInMonths','JobsSupported']]
+y = df['LoanStatus']  
+
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+
+rf_model = RandomForestClassifier(
+    n_estimators=200,
+    random_state=42,
+    class_weight='balanced'
+)
+rf_model.fit(X_train_scaled, y_train)
+
+
+y_pred_rf = rf_model.predict(X_test_scaled)
+y_pred_proba_rf = rf_model.predict_proba(X_test_scaled)[:, 1]
+
+
+print("Accuracy:", accuracy_score(y_test, y_pred_rf))
+print("ROC AUC:", roc_auc_score(y_test, y_pred_proba_rf))
+print("\nClassification Report:\n", classification_report(y_test, y_pred_rf))
+
+importances = rf_model.feature_importances_
+features = X.columns
+
+feat_importances = pd.DataFrame({'Feature': features, 'Importance': importances})
+feat_importances = feat_importances.sort_values(by='Importance', ascending=False).head(10)
+
+plt.figure(figsize=(8,5))
+sns.barplot(x='Importance', y='Feature', data=feat_importances, palette='crest')
+plt.title('Feature Importances for Random Forest Model')
+plt.xlabel('Feature Importance')
+plt.ylabel('Feature')
+plt.tight_layout()
+plt.savefig('rf_feature_importance.png', dpi=300, bbox_inches='tight')
+plt.show()
+
