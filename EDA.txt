@@ -487,7 +487,7 @@ feat_importances = pd.DataFrame({'Feature': features, 'Importance': importances}
 feat_importances = feat_importances.sort_values(by='Importance', ascending=False).head(10)
 
 plt.figure(figsize=(8,5))
-sns.barplot(x='Importance', y='Feature', data=feat_importances, palette='crest')
+sns.barplot(x='Importance', y='Feature', hue='Feature', data=feat_importances)
 plt.title('Feature Importances for Random Forest Model')
 plt.xlabel('Feature Importance')
 plt.ylabel('Feature')
