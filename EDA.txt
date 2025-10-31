@@ -495,3 +495,96 @@ plt.tight_layout()
 plt.savefig('rf_feature_importance.png', dpi=300, bbox_inches='tight')
 plt.show()
 
+
+
+
+
+
+
+# ==== Logistic Regression (no GrossChargeOffAmount) ====
+import numpy as np
+import pandas as pd
+
+from sklearn.model_selection import train_test_split
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, f1_score, roc_auc_score, classification_report
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
+FEATURES = ['GrossApproval', 'SBAGuaranteedApproval', 'TermInMonths', 'JobsSupported']
+TARGET   = 'LoanStatus'
+
+dfm = df[FEATURES + [TARGET]].copy()
+
+
+t = dfm[TARGET]
+if pd.api.types.is_numeric_dtype(t):
+    dfm[TARGET] = pd.to_numeric(t, errors='coerce').round().astype('Int64')
+else:
+    norm = (t.astype(str).str.strip().str.upper()
+              .replace({'PAID IN FULL':'PIF','PAID-IN-FULL':'PIF',
+                        'CHARGE OFF':'CHGOFF','CHARGEOFF':'CHGOFF'}))
+    dfm[TARGET] = norm.map({'PIF':1, 'CHGOFF':0}).astype('Int64')
+
+
+dfm = dfm[dfm[TARGET].isin([0,1])]
+
+
+for c in FEATURES:
+    dfm[c] = pd.to_numeric(dfm[c], errors='coerce')
+
+
+X_raw = dfm[FEATURES]
+y     = dfm[TARGET].astype(int)
+
+
+imp = SimpleImputer(strategy='median')
+X_imp = pd.DataFrame(imp.fit_transform(X_raw), columns=FEATURES, index=X_raw.index)
+
+
+scaler = StandardScaler()
+X_scaled = pd.DataFrame(scaler.fit_transform(X_imp), columns=FEATURES, index=X_imp.index)
+
+
+use_strat = y.value_counts().min() >= 2
+X_train, X_test, y_train, y_test = train_test_split(
+    X_scaled, y, test_size=0.2, random_state=20, stratify=y if use_strat else None
+)
+
+
+log_reg = LogisticRegression(
+    solver='liblinear',        
+    class_weight='balanced',   
+    max_iter=1000,
+    random_state=20
+)
+log_reg.fit(X_train, y_train)
+y_pred  = log_reg.predict(X_test)
+y_prob  = log_reg.predict_proba(X_test)[:, 1]
+
+print("Accuracy :", round(accuracy_score(y_test, y_pred), 4))
+print("F1-score :", round(f1_score(y_test, y_pred), 4))
+print("ROC AUC  :", round(roc_auc_score(y_test, y_prob), 4))
+print("\nClassification Report:\n", classification_report(y_test, y_pred, digits=3))
+
+
+coef = pd.Series(log_reg.coef_[0], index=FEATURES)
+coef_df = (coef.rename('Coefficient')
+               .reindex(coef.abs().sort_values(ascending=False).index) 
+               .reset_index().rename(columns={'index':'Feature'}))
+
+plt.figure(figsize=(9,5))
+sns.barplot(x='Coefficient', y='Feature', data=coef_df, palette='viridis')
+plt.title('Logistic Regression Coefficients (standardized inputs)')
+plt.xlabel('Coefficient (log-odds per +1 SD)')
+plt.ylabel('Feature')
+plt.axvline(0, color='k', lw=1)
+plt.tight_layout()
+plt.savefig('logreg_coeffs.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+
